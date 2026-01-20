@@ -1,0 +1,232 @@
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Financeiro</title>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+*{box-sizing:border-box;font-family:Arial}
+body{margin:0;background:#0f172a;color:#e5e7eb}
+.container{padding:20px}
+h1{margin-bottom:20px}
+
+/* ===== LAYOUT DESKTOP ===== */
+.topo{display:flex;gap:20px}
+.left{flex:3}
+.right{flex:2}
+
+/* ===== CARDS ===== */
+.cards{display:flex;gap:15px;margin-bottom:20px}
+.card{
+    flex:1;
+    background:#020617;
+    padding:15px;
+    border-radius:8px;
+    transition:transform .2s ease, box-shadow .2s ease;
+}
+.card:hover{
+    transform:translateY(-4px);
+    box-shadow:0 8px 20px rgba(0,0,0,.4);
+}
+.card h3{margin:0;font-size:13px;color:#94a3b8}
+.card span{font-size:22px;font-weight:bold}
+.ganho{color:#22c55e}
+.gasto{color:#ef4444}
+.reserva{color:#eab308}
+.saldo{color:#38bdf8}
+
+/* ===== FORMULÁRIOS ===== */
+form{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+input,select,button{
+padding:8px 12px;
+border-radius:6px;
+border:none;
+background:#020617;
+color:white
+}
+
+button{
+background:#2563eb;
+cursor:pointer;
+transition:background .2s ease, transform .2s ease;
+}
+button:hover{transform:translateY(-2px)}
+
+button.limpar{
+background:#dc2626;
+}
+button.limpar:hover{
+background:#b91c1c;
+}
+
+/* ===== TABELA ===== */
+.table-wrap{
+overflow-x:auto;
+}
+table{
+width:100%;
+border-collapse:collapse;
+background:#020617;
+border-radius:8px;
+min-width:600px;
+}
+th,td{padding:10px;text-align:left}
+th{color:#94a3b8;font-size:13px}
+tr{border-bottom:1px solid #1e293b}
+.valor-ganho{color:#22c55e}
+.valor-gasto{color:#ef4444}
+.valor-reserva{color:#eab308}
+a{color:#f87171;text-decoration:none}
+
+/* ===== GRÁFICO ===== */
+.grafico-box{
+background:#020617;
+padding:15px;
+border-radius:8px;
+height:260px;
+}
+
+/* ===== RESPONSIVO MOBILE ===== */
+@media (max-width: 768px){
+
+    .topo{
+        flex-direction:column;
+    }
+
+    .cards{
+        flex-wrap:wrap;
+    }
+
+    .card{
+        flex:1 1 calc(50% - 10px);
+    }
+
+    h1{
+        text-align:center;
+    }
+
+    form{
+        flex-direction:column;
+    }
+
+    input,select,button{
+        width:100%;
+    }
+
+    .grafico-box{
+        height:220px;
+    }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>💰 Controle Financeiro</h1>
+
+<div class="topo">
+
+<div class="left">
+
+<div class="cards">
+<div class="card"><h3>Ganhos</h3><span class="ganho">R$ {{ "%.2f"|format(total_ganhos) }}</span></div>
+<div class="card"><h3>Despesas</h3><span class="gasto">R$ {{ "%.2f"|format(total_despesas) }}</span></div>
+<div class="card"><h3>Reservas</h3><span class="reserva">R$ {{ "%.2f"|format(total_reservas) }}</span></div>
+<div class="card"><h3>Saldo</h3><span class="saldo">R$ {{ "%.2f"|format(saldo) }}</span></div>
+</div>
+
+<!-- FILTRO -->
+<form method="get">
+<input type="month" name="mes" value="{{ mes or '' }}">
+<button type="submit">Filtrar</button>
+<button type="button" class="limpar" onclick="window.location.href='/'">
+Limpar
+</button>
+</form>
+
+<!-- CADASTRO -->
+<form method="post">
+<input name="descricao" placeholder="Descrição" required>
+<input type="number" step="0.01" name="valor" placeholder="Valor" required>
+<input type="date" name="data" required>
+<select name="tipo">
+<option value="ganho">Ganho</option>
+<option value="gasto">Despesa</option>
+<option value="reserva">Reserva</option>
+</select>
+<button>Adicionar</button>
+</form>
+
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>Descrição</th>
+<th>Tipo</th>
+<th>Data</th>
+<th>Valor</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+{% for l in lancamentos %}
+<tr>
+<td>{{ l.descricao }}</td>
+<td>{{ l.tipo }}</td>
+<td>{{ l.data }}</td>
+<td class="
+{% if l.tipo=='ganho' %}valor-ganho
+{% elif l.tipo=='gasto' %}valor-gasto
+{% else %}valor-reserva{% endif %}
+">
+R$ {{ "%.2f"|format(l.valor) }}
+</td>
+<td><a href="/excluir/{{ l.id }}">Excluir</a></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+
+</div>
+
+<!-- GRÁFICO -->
+<div class="right">
+<div class="grafico-box">
+<canvas id="grafico"></canvas>
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+new Chart(document.getElementById("grafico"), {
+    type: "bar",
+    data: {
+        labels: {{ labels|tojson }},
+        datasets: [
+            { label: "Ganhos", data: {{ ganhos|tojson }} },
+            { label: "Despesas", data: {{ gastos|tojson }} },
+            { label: "Reservas", data: {{ reservas|tojson }} }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { labels: { color: "#e5e7eb" } }
+        },
+        scales: {
+            x: { ticks: { color: "#94a3b8" } },
+            y: { ticks: { color: "#94a3b8" } }
+        }
+    }
+});
+</script>
+
+</body>
+</html>
